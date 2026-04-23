@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { LogOut, Menu, X } from "lucide-react";
-import { getCurrentUser, logoutUser } from "@/lib/auth";
+import { AUTH_CHANGED_EVENT, getCurrentUser, logoutUser } from "@/lib/auth";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -14,6 +14,20 @@ const Navbar = () => {
     { label: "Pricing", href: "#pricing" },
     { label: "API", href: "#api" },
   ];
+
+  useEffect(() => {
+    const syncUser = () => {
+      setCurrentUser(getCurrentUser());
+    };
+
+    window.addEventListener(AUTH_CHANGED_EVENT, syncUser);
+    window.addEventListener("storage", syncUser);
+
+    return () => {
+      window.removeEventListener(AUTH_CHANGED_EVENT, syncUser);
+      window.removeEventListener("storage", syncUser);
+    };
+  }, []);
 
   const handleLogout = () => {
     logoutUser();
@@ -45,6 +59,9 @@ const Navbar = () => {
         <div className="hidden md:flex items-center gap-3">
           {currentUser ? (
             <>
+              <Link to="/dashboard" className="text-sm font-medium text-gray-600 hover:text-purple-600 transition-colors duration-200">Dashboard</Link>
+              <Link to="/upload" className="text-sm font-medium text-gray-600 hover:text-purple-600 transition-colors duration-200">Workspace</Link>
+              <Link to="/developer" className="text-sm font-medium text-gray-600 hover:text-purple-600 transition-colors duration-200">API Portal</Link>
               <span className="text-sm text-gray-600">Hi, {currentUser.name}</span>
               <Button variant="ghost" size="sm" onClick={handleLogout} className="text-gray-600 hover:text-gray-900">
                 <LogOut className="w-4 h-4 mr-2" />
@@ -85,10 +102,18 @@ const Navbar = () => {
           ))}
           <div className="flex gap-2 pt-2">
             {currentUser ? (
-              <Button variant="ghost" size="sm" className="w-full text-gray-600 hover:text-gray-900" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
+              <>
+                <Link to="/dashboard" className="flex-1">
+                  <Button variant="ghost" size="sm" className="w-full text-gray-600 hover:text-gray-900" onClick={() => setMobileOpen(false)}>Dashboard</Button>
+                </Link>
+                <Link to="/developer" className="flex-1">
+                  <Button variant="ghost" size="sm" className="w-full text-gray-600 hover:text-gray-900" onClick={() => setMobileOpen(false)}>API Portal</Button>
+                </Link>
+                <Button variant="ghost" size="sm" className="w-full text-gray-600 hover:text-gray-900" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </>
             ) : (
               <>
                 <Link to="/login" className="flex-1">
