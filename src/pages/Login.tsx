@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Lock, User } from "lucide-react";
+import { Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { getCurrentUser, loginUser } from "@/lib/auth";
 
@@ -11,6 +11,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (getCurrentUser()) {
@@ -18,18 +19,21 @@ const Login = () => {
     }
   }, [navigate]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setSubmitting(true);
 
-    const result = loginUser(email, password);
+    const result = await loginUser(email, password);
 
     if (!result.ok) {
       toast.error(result.message);
+      setSubmitting(false);
       return;
     }
 
     toast.success("Signed in successfully.");
     navigate("/dashboard", { replace: true });
+    setSubmitting(false);
   };
 
   return (
@@ -77,7 +81,13 @@ const Login = () => {
             <div className="text-right">
               <Link to="/forgot-password" className="text-xs text-purple-600 hover:text-purple-700 font-medium">Forgot password?</Link>
             </div>
-            <Button className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white hover:shadow-lg hover:shadow-purple-400/50 font-medium" type="submit">Sign In</Button>
+            <Button
+              className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white hover:shadow-lg hover:shadow-purple-400/50 font-medium"
+              type="submit"
+              disabled={submitting}
+            >
+              {submitting ? "Signing In..." : "Sign In"}
+            </Button>
           </form>
 
           <div className="mt-6 text-center">
