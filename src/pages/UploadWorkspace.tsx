@@ -13,8 +13,13 @@ const API_ENDPOINT = "/api/v1/remove-background";
 const HISTORY_STORAGE_KEY = "snap-background-history";
 const HISTORY_LIMIT = 30;
 const MAX_BATCH = 20;
-const FAST_MAX_DIMENSION = 1600;
 const BATCH_CONCURRENCY = 2;
+
+const QUALITY_DIMENSIONS = {
+  fast: 1280,
+  balanced: 1600,
+  high: 2200,
+} as const;
 
 type HistoryItem = {
   id: string;
@@ -41,6 +46,8 @@ type Preset = {
   filter: string;
   background: "transparent" | "white" | "studio";
 };
+
+type QualityMode = "fast" | "balanced" | "high";
 
 const PRESETS: Preset[] = [
   { id: "balanced", name: "Balanced", filter: "brightness(1) contrast(1)", background: "transparent" },
@@ -88,6 +95,7 @@ const UploadWorkspace = () => {
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [activePresetId, setActivePresetId] = useState(PRESETS[0].id);
   const [exportFormat, setExportFormat] = useState<"png" | "webp" | "jpeg">("png");
+  const [qualityMode, setQualityMode] = useState<QualityMode>("balanced");
   const { toast } = useToast();
   const currentUser = getCurrentUser();
 
@@ -221,13 +229,14 @@ const UploadWorkspace = () => {
       const bitmap = await createImageBitmap(file);
       const { width, height } = bitmap;
       const longestSide = Math.max(width, height);
+      const maxDimension = QUALITY_DIMENSIONS[qualityMode];
 
-      if (longestSide <= FAST_MAX_DIMENSION) {
+      if (longestSide <= maxDimension) {
         bitmap.close();
         return file;
       }
 
-      const scale = FAST_MAX_DIMENSION / longestSide;
+      const scale = maxDimension / longestSide;
       const targetWidth = Math.max(1, Math.round(width * scale));
       const targetHeight = Math.max(1, Math.round(height * scale));
 
@@ -258,7 +267,7 @@ const UploadWorkspace = () => {
     } catch {
       return file;
     }
-  }, []);
+  }, [qualityMode]);
 
   const processFile = async (file: File) => {
     const optimizedFile = await downscaleForProcessing(file);
@@ -690,6 +699,19 @@ const UploadWorkspace = () => {
                   </button>
                 ))}
                 <div className="ml-auto flex items-center gap-2">
+                  <label htmlFor="qualityMode" className="text-xs text-muted-foreground">
+                    Quality
+                  </label>
+                  <select
+                    id="qualityMode"
+                    className="bg-muted/40 border border-border rounded-lg px-2 py-1 text-sm"
+                    value={qualityMode}
+                    onChange={(event) => setQualityMode(event.target.value as QualityMode)}
+                  >
+                    <option value="fast">Fast</option>
+                    <option value="balanced">Balanced</option>
+                    <option value="high">High</option>
+                  </select>
                   <label htmlFor="exportFormat" className="text-xs text-muted-foreground">
                     Export
                   </label>
