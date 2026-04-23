@@ -510,6 +510,16 @@ const UploadWorkspace = () => {
 
         {activeTab === "workspace" && queue.length === 0 ? (
           <div
+            role="button"
+            tabIndex={0}
+            aria-label="Upload images"
+            onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
             onDragOver={(event) => {
               event.preventDefault();
               setDragOver(true);
