@@ -45,7 +45,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto px-4 pt-24 pb-12">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col items-center text-center mb-8 gap-4">
           <div>
             <h1 className="text-2xl font-heading font-bold">Dashboard</h1>
             <p className="text-sm text-muted-foreground">
@@ -55,7 +55,7 @@ const Dashboard = () => {
           <Link to="/upload">
             <Button variant="cta" className="rounded-xl">
               <Upload className="w-4 h-4 mr-2" />
-              New Upload
+              Photo Upload
             </Button>
           </Link>
         </div>
