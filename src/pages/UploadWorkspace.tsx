@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import JSZip from "jszip";
+import { removeBackground as removeBackgroundInBrowser } from "@imgly/background-removal";
 import { Upload, X, Download, Loader2, ImageIcon, History, Package, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
@@ -8,7 +9,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { listApiKeys } from "@/lib/apiKeys";
 import { canProcessImages, getUsageStats, recordApiUsage, recordImageProcessed } from "@/lib/usage";
 
-const WEBHOOK_URL = "https://sagarpun.app.n8n.cloud/webhook/remove-background";
 const API_ENDPOINT = "/api/v1/remove-background";
 const HISTORY_STORAGE_KEY = "snap-background-history";
 const HISTORY_LIMIT = 30;
@@ -61,6 +61,19 @@ const normalizeImageUrl = (url: string) => {
   }
 
   return url;
+};
+
+const summarizeErrorBody = (rawBody: string, status: number) => {
+  const trimmed = rawBody.trim();
+  if (!trimmed) {
+    return `Processing failed (${status}).`;
+  }
+
+  if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
+    return "Background service endpoint is unavailable. Using local AI fallback.";
+  }
+
+  return trimmed.length > 220 ? `${trimmed.slice(0, 220)}...` : trimmed;
 };
 
 const UploadWorkspace = () => {
@@ -202,41 +215,50 @@ const UploadWorkspace = () => {
   }, [handlePaste]);
 
   const processFile = async (file: File) => {
-    const callEndpoint = async (url: string) => {
-      const response = await fetch(url, {
+    const processViaLocalModel = async () => {
+      const outputBlob = await removeBackgroundInBrowser(file);
+      return URL.createObjectURL(outputBlob);
+    };
+
+    let response: Response;
+
+    try {
+      response = await fetch(API_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": file.type,
           "X-File-Name": encodeURIComponent(file.name),
           "x-owner-email": currentUser?.email ?? "",
+          "x-plan-limit": String(usageStats?.dailyLimit ?? 5),
         },
         body: file,
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `Request failed with status ${response.status}`);
-      }
-
-      return response.json();
-    };
-
-    try {
-      const data = await callEndpoint(API_ENDPOINT);
-      const payload = data?.data ?? data;
-      if (!payload?.url) {
-        throw new Error("API response missing image URL.");
-      }
-
-      return normalizeImageUrl(String(payload.url));
     } catch {
-      const fallbackData = await callEndpoint(WEBHOOK_URL);
-      if (!fallbackData?.url) {
-        throw new Error("Webhook response missing image URL.");
-      }
-
-      return normalizeImageUrl(String(fallbackData.url));
+      // Offline/local fallback when API is unreachable.
+      return processViaLocalModel();
     }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      if (response.status >= 500 || response.status === 404) {
+        return processViaLocalModel();
+      }
+      throw new Error(summarizeErrorBody(errorText, response.status));
+    }
+
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error("Processing API returned invalid response.");
+    }
+
+    const payload = (data as { data?: { url?: string }; url?: string })?.data ?? (data as { url?: string });
+    if (!payload?.url) {
+      return processViaLocalModel();
+    }
+
+    return normalizeImageUrl(String(payload.url));
   };
 
   const handleProcessBatch = async () => {
@@ -542,6 +564,7 @@ const UploadWorkspace = () => {
                   <p className="text-xs text-muted-foreground">
                     {queue.filter((item) => item.status === "done").length} done · {queue.filter((item) => item.status === "pending").length} pending · {queue.length} total
                   </p>
+                  <p className="text-xs text-primary/80 mt-1">Click "Remove Background" to start processing.</p>
                 </div>
                 {usageStats && (
                   <p className="text-xs text-muted-foreground">Daily usage: {usageStats.usedToday}/{usageStats.dailyLimit}</p>
@@ -551,9 +574,9 @@ const UploadWorkspace = () => {
                     <Upload className="w-4 h-4 mr-2" />
                     Add files
                   </Button>
-                  <Button variant="cta" size="sm" onClick={handleProcessBatch} disabled={processing}>
+                  <Button variant="cta" size="sm" onClick={handleProcessBatch} disabled={processing || queue.length === 0}>
                     {processing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                    {processing ? "Processing" : "Process batch"}
+                    {processing ? "Removing..." : "Remove Background"}
                   </Button>
                   <Button variant="cta-outline" size="sm" onClick={handleDownloadZip} disabled={downloadingId === "zip"}>
                     {downloadingId === "zip" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Package className="w-4 h-4 mr-2" />}
