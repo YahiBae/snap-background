@@ -13,6 +13,8 @@ const API_ENDPOINT = "/api/v1/remove-background";
 const HISTORY_STORAGE_KEY = "snap-background-history";
 const HISTORY_LIMIT = 30;
 const MAX_BATCH = 20;
+const FAST_MAX_DIMENSION = 1600;
+const BATCH_CONCURRENCY = 2;
 
 type HistoryItem = {
   id: string;
@@ -214,9 +216,55 @@ const UploadWorkspace = () => {
     };
   }, [handlePaste]);
 
+  const downscaleForProcessing = useCallback(async (file: File) => {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const { width, height } = bitmap;
+      const longestSide = Math.max(width, height);
+
+      if (longestSide <= FAST_MAX_DIMENSION) {
+        bitmap.close();
+        return file;
+      }
+
+      const scale = FAST_MAX_DIMENSION / longestSide;
+      const targetWidth = Math.max(1, Math.round(width * scale));
+      const targetHeight = Math.max(1, Math.round(height * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        bitmap.close();
+        return file;
+      }
+
+      context.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
+      bitmap.close();
+
+      const mimeType = file.type === "image/png" || file.type === "image/webp" ? file.type : "image/jpeg";
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, 0.92));
+
+      if (!blob) {
+        return file;
+      }
+
+      return new File([blob], file.name, {
+        type: blob.type || file.type,
+        lastModified: file.lastModified,
+      });
+    } catch {
+      return file;
+    }
+  }, []);
+
   const processFile = async (file: File) => {
+    const optimizedFile = await downscaleForProcessing(file);
+
     const processViaLocalModel = async () => {
-      const outputBlob = await removeBackgroundInBrowser(file);
+      const outputBlob = await removeBackgroundInBrowser(optimizedFile);
       return URL.createObjectURL(outputBlob);
     };
 
@@ -226,12 +274,12 @@ const UploadWorkspace = () => {
       response = await fetch(API_ENDPOINT, {
         method: "POST",
         headers: {
-          "Content-Type": file.type,
-          "X-File-Name": encodeURIComponent(file.name),
+          "Content-Type": optimizedFile.type,
+          "X-File-Name": encodeURIComponent(optimizedFile.name),
           "x-owner-email": currentUser?.email ?? "",
           "x-plan-limit": String(usageStats?.dailyLimit ?? 5),
         },
-        body: file,
+        body: optimizedFile,
       });
     } catch {
       // Offline/local fallback when API is unreachable.
@@ -273,60 +321,74 @@ const UploadWorkspace = () => {
 
     setProcessing(true);
     const nextHistory = [...historyItems];
+    const activeKey = listApiKeys(currentUser).find((key) => !key.revokedAt);
+    const pendingItems = queue.filter((item) => item.status !== "done");
+    let remainingQuota = Math.max(0, (usageStats?.dailyLimit ?? 5) - (usageStats?.usedToday ?? 0));
+    let cursor = 0;
 
-    for (const item of queue) {
-      if (item.status === "done") {
-        continue;
-      }
+    const worker = async () => {
+      while (true) {
+        const index = cursor;
+        cursor += 1;
 
-      if (!canProcessImages(currentUser, 1)) {
-        setItemState(item.id, {
-          status: "blocked",
-          error: "Daily quota reached",
-        });
-        continue;
-      }
-
-      setItemState(item.id, {
-        status: "processing",
-        error: null,
-      });
-
-      const startedAt = performance.now();
-      try {
-        const resultUrl = await processFile(item.file);
-        const duration = performance.now() - startedAt;
-        recordImageProcessed(currentUser, duration);
-
-        const activeKey = listApiKeys(currentUser).find((key) => !key.revokedAt);
-        if (activeKey) {
-          recordApiUsage({
-            keyId: activeKey.id,
-            endpoint: "/api/v1/remove-background",
-            status: 200,
-          });
+        if (index >= pendingItems.length) {
+          break;
         }
 
+        const item = pendingItems[index];
+
+        if (remainingQuota <= 0 || !canProcessImages(currentUser, 1)) {
+          setItemState(item.id, {
+            status: "blocked",
+            error: "Daily quota reached",
+          });
+          continue;
+        }
+
+        remainingQuota -= 1;
+
         setItemState(item.id, {
-          status: "done",
-          resultUrl,
+          status: "processing",
+          error: null,
         });
 
-        nextHistory.unshift({
-          id: crypto.randomUUID(),
-          createdAt: new Date().toISOString(),
-          originalName: item.file.name,
-          originalPreview: item.preview,
-          resultUrl,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unable to process image.";
-        setItemState(item.id, {
-          status: "failed",
-          error: message,
-        });
+        const startedAt = performance.now();
+        try {
+          const resultUrl = await processFile(item.file);
+          const duration = performance.now() - startedAt;
+          recordImageProcessed(currentUser, duration);
+
+          if (activeKey) {
+            recordApiUsage({
+              keyId: activeKey.id,
+              endpoint: "/api/v1/remove-background",
+              status: 200,
+            });
+          }
+
+          setItemState(item.id, {
+            status: "done",
+            resultUrl,
+          });
+
+          nextHistory.unshift({
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString(),
+            originalName: item.file.name,
+            originalPreview: item.preview,
+            resultUrl,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unable to process image.";
+          setItemState(item.id, {
+            status: "failed",
+            error: message,
+          });
+        }
       }
-    }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, pendingItems.length) }, () => worker()));
 
     saveHistory(nextHistory.slice(0, HISTORY_LIMIT));
     setProcessing(false);
