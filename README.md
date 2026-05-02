@@ -92,7 +92,7 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
 
 
-Notes: the repository includes Vite, TypeScript, Tailwind and Playwright configs for local dev and testing.
+
 
 
 
