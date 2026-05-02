@@ -102,8 +102,7 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 
 Notes: the repository includes Vite, TypeScript, Tailwind and Playwright configs for local dev and testing.
 
-**Deployment**
-This is a static frontend app; deploy the `dist/` output (Vite build) to any static host. Vercel is recommended (project already has `vercel.json`).
+
 
 
 
