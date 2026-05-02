@@ -91,9 +91,6 @@ VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
 
-4. Restart the dev server. If env vars are not provided, the app falls back to `localStorage` history.
-un unit tests with Vitest
-- `lint` — run ESLint
 
 Notes: the repository includes Vite, TypeScript, Tailwind and Playwright configs for local dev and testing.
 
