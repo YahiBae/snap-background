@@ -115,9 +115,4 @@ PRs are welcome. For changes:
 MIT
 
 ---
-If you'd like, I can also:
-- Add a short usage guide showing sample screenshots or GIFs
-- Add required environment variable docs for additional services
-- Create a minimal `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`
 
-Merged README content and resolved merge conflict.
