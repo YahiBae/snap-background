@@ -105,14 +105,5 @@ Notes: the repository includes Vite, TypeScript, Tailwind and Playwright configs
 **Deployment**
 This is a static frontend app; deploy the `dist/` output (Vite build) to any static host. Vercel is recommended (project already has `vercel.json`).
 
-**Contributing**
-PRs are welcome. For changes:
-1. Fork the repo and create a feature branch.
-2. Run tests and linting locally.
-3. Open a PR with a clear description.
 
-**License**
-MIT
-
----
 
