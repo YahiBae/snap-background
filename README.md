@@ -92,12 +92,7 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
 
 4. Restart the dev server. If env vars are not provided, the app falls back to `localStorage` history.
-
-**Scripts** (from `package.json`)
-- `dev` — start Vite dev server
-- `build` — create production build
-- `preview` — locally preview production build
-- `test` / `test:watch` — run unit tests with Vitest
+un unit tests with Vitest
 - `lint` — run ESLint
 
 Notes: the repository includes Vite, TypeScript, Tailwind and Playwright configs for local dev and testing.
