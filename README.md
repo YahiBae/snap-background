@@ -1,13 +1,14 @@
-# Snap Background
+# Snap Background / AI Background Removal
 
-Snap Background is a frontend web app that helps users remove image backgrounds quickly and download results with transparent backgrounds. It's built with Vite, React, TypeScript, Tailwind CSS and the shadcn/ui component set.
+Snap Background is a frontend web app for background removal with editing, batch processing, and downloadable export workflows. It's built with Vite, React, TypeScript, Tailwind CSS and the shadcn/ui component set.
 
 **Live demo / deploy**: This project is configured for static hosting (Vercel, Netlify, etc.) — see `vercel.json`.
 
 **Quick overview**
 - Remove backgrounds from images (upload, preview, download).
+- Editing controls (brightness, contrast, blur, color replace) and presets.
+- Batch processing, ZIP export and history persistence (optional cloud DB).
 - Responsive UI built with shadcn components and Tailwind CSS.
-- Uses `react-router` pages for app flow: upload, dashboard, auth pages.
 
 **Tech stack**
 - Vite + React + TypeScript
@@ -63,6 +64,35 @@ npm run lint
 	- `hooks/` — custom hooks (mobile detection, toasts)
 - `public/` — static assets
 
+**Supabase (optional) — Real Database Setup**
+This project supports history persistence using Supabase. To enable:
+
+1. Create a Supabase project.
+2. Run this SQL in the Supabase SQL editor:
+
+```sql
+create table if not exists public.image_history (
+	id text primary key,
+	owner_email text not null,
+	created_at timestamptz not null default now(),
+	original_name text not null,
+	original_preview text not null,
+	result_url text not null
+);
+
+create index if not exists image_history_owner_created_idx
+	on public.image_history (owner_email, created_at desc);
+```
+
+3. Create a `.env` file in the project root with:
+
+```bash
+VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+```
+
+4. Restart the dev server. If env vars are not provided, the app falls back to `localStorage` history.
+
 **Scripts** (from `package.json`)
 - `dev` — start Vite dev server
 - `build` — create production build
@@ -87,7 +117,7 @@ MIT
 ---
 If you'd like, I can also:
 - Add a short usage guide showing sample screenshots or GIFs
-- Add required environment variable docs (if you plan to call an API/service for background removal)
-- Create a minimal CONTRIBUTING.md and CODE_OF_CONDUCT.md
+- Add required environment variable docs for additional services
+- Create a minimal `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`
 
-Updated `README.md` with the above content.
+Merged README content and resolved merge conflict.

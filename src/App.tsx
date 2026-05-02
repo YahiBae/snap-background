@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import UploadWorkspace from "./pages/UploadWorkspace";
 import ForgotPassword from "./pages/ForgotPassword";
 import NotFound from "./pages/NotFound";
+import DeveloperPortal from "./pages/DeveloperPortal";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/upload" element={<RequireAuth><UploadWorkspace /></RequireAuth>} />
+          <Route path="/developer" element={<RequireAuth><DeveloperPortal /></RequireAuth>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
