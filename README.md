@@ -84,11 +84,6 @@ create index if not exists image_history_owner_created_idx
 	on public.image_history (owner_email, created_at desc);
 ```
 
-3. Create a `.env` file in the project root with:
-
-```bash
-VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
 
 
