@@ -32,4 +32,4 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 
 4. Restart the dev server.
 
-If env vars are not provided, the app falls back to localStorage history automatically.
+If env vars are not provided, the app falls back to localStorage history automatically...
