@@ -212,7 +212,7 @@ If you want, I can also:
 - Create a `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`
 - Add example `.env.example` with placeholders
 
-Applied SmartYatra-style README template adapted for `Snap Background`.
+Applied SmartYatra-style README template adapted for `Snap Background`..
 
 
 
